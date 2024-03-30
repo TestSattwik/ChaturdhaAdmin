@@ -6,13 +6,14 @@ import {
   Container,
   CssBaseline,
   Avatar,
-  Alert,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
+  Alert,
   CircularProgress 
 } from "@mui/material";
+
 import {api} from "../../../Api/Api";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { useNavigate } from 'react-router-dom';
@@ -50,7 +51,9 @@ const LoginForm = () => {
   const [verifyingOTP, setVerifyingOTP] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [userType, setUserType] = useState("EMPLOYEE");
+  const [errorMessage1, setErrorMessage1] = useState("");
   const navigate = useNavigate();
+
 
   const handleMobileSubmit = async (e) => {
     setErrorMessage("");
@@ -78,6 +81,8 @@ const LoginForm = () => {
   const handleOtpSubmit = async (e) => {
     e.preventDefault();
     setVerifyingOTP(true);
+    setErrorMessage1("");
+
     try {
       const response = await api.put("api/account/login-with-otp/", {
         phone_number: mobile,
@@ -90,7 +95,6 @@ const LoginForm = () => {
         const { access, refresh } = token;
 
         localStorage.setItem('access_token', access);
-        localStorage.setItem('refresh_token', refresh);
 
         const profileResponse = await api.get("api/account/profile/", {
           headers: {
@@ -98,26 +102,27 @@ const LoginForm = () => {
           },
         });
      
-
+        const adminDetails = profileResponse?.data?.user_details
         const employeeDetails = profileResponse?.data?.user_details?.employee_details;
-     
+      
+       if(adminDetails?.role==="ADMIN"){
+
+        navigate("/dashboard/app");
+        
+       } else if (employeeDetails.length === 0) {
+          await localStorage.removeItem('access_token');
+          setErrorMessage1("You have no employee details");
+
+        }else{
         await localStorage.setItem('employee_role_name', employeeDetails[0]?.jobrole_name);
         await localStorage.setItem('employee_role_id', employeeDetails[0]?.role.toString());
         await localStorage.setItem('employee_role_city', employeeDetails[0]?.city_name);
         await localStorage.setItem('employee_role_cityid', employeeDetails[0]?.city.toString());
         await localStorage.setItem('employee_role_region', employeeDetails[0]?.region_name);
         await localStorage.setItem('employee_role_regionid', employeeDetails[0]?.region.toString());
-        
-        // Replace with your navigation logic or use React Router
-        const userRole = localStorage.getItem('employee_role_name');
-        if(userRole === 'Executive'){
-          window.location.href = 'dashboard/GeneralCity';
-        }else if(userRole === 'Admin') {
-          navigate('/dashboard/app');
-        }else{
-          navigate("/dashboard/app");
 
-        }
+        navigate("/dashboard/app");
+      }
       } else {
         throw new Error(msg); 
       }
@@ -137,6 +142,8 @@ const LoginForm = () => {
           <LockOutlinedIcon />
         </Avatar> */}
         {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
+        {errorMessage1 && <Alert severity="error">{errorMessage1}</Alert>}
+
         {/* <Typography component="h1" variant="h5">
           {showOtpForm ? "Enter OTP" : "Enter Mobile Number"}
         </Typography> */}
@@ -187,8 +194,10 @@ const LoginForm = () => {
               type="text"
               id="otp"
               autoComplete="one-time-code"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
+              onChange={(e) => {
+                setOtp(e.target.value);
+                setErrorMessage1('');
+              }}
             />
           )}
           <Button

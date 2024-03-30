@@ -13,18 +13,16 @@ import {
     FormControl, InputLabel,
     ListItemText,
     CardContent,
-    Grid
+    Grid,Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
+import { ErrorOutline } from '@mui/icons-material';
 // import { Tree, TreeNode } from 'react-organizational-chart';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogTitle from '@mui/material/DialogTitle';
 
 export default function CreateJobPage(props) {
     const [cityData, setCityData] = useState([]);
     const [selectedCity, setSelectedCity] = useState([]);
+    const [selectedStates, setSelectedStates] = useState('');
+
    
     const [selectedUnder, setSelectedUnder] = useState([]);
 
@@ -34,12 +32,15 @@ export default function CreateJobPage(props) {
 
 
     const [selectedCitiesId, setSelectedCitiesId] = useState([]);
+    const [selectedStateId, setSelectedStateId] = useState([]);
+
+    const [selectedStatesId, setSelectedStatesId] = useState([]);
 
     const [selectedUnderId, setSelectedUnderId] = useState([]);
     const [openDialog, setOpenDialog] = useState(false);
 
 
-    console.log(selectedCity)
+    
     
     const [jobTitle, setJobTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -88,21 +89,7 @@ export default function CreateJobPage(props) {
         setStatus(event.target.checked);
     };
 
-    const handleCityChange = (event) => {
-        const selectedNames = event.target.value;
-        setSelectedCity(selectedNames);
-      
-        // Log the corresponding IDs for selected names
-        const selectedIds = cityData
-          .filter((city) => selectedNames.includes(city.name))
-          .map((city) => city.id);
-      
-        // Update the selectedCity state with the IDs
-        const selectedId = selectedIds.length > 0 ? selectedIds[0] : 1;
-        setSelectedCityId(selectedId);
-        console.log(selectedId);
-      };
-
+ 
       
       const handleUnderChange = (event) => {
         const selectedNames = event.target.value;
@@ -126,7 +113,11 @@ export default function CreateJobPage(props) {
 
     const [regions, setRegions] = useState([]);
     const [cities, setCities] = useState([]);
+    const [states, setStates] = useState([]);
+
     const [selectedRegion, setSelectedRegion] = useState('');
+  
+
     const [selectedCities, setSelectedCities] = useState([]);
 
     const [apiData, setApiData] = useState([]);
@@ -139,13 +130,18 @@ export default function CreateJobPage(props) {
       api.get(apiUrl)
         .then((response) => {
           // Transform the response data to include IDs
-          const transformedData = response.data.map(region => ({
+          const transformedData = response?.data?.map(region => ({
             regionId: region.region_id, // Replace with your actual key for region ID
             region: region.region,
-            cities: region.cities.map(city => ({
-              cityId: city.city_id, // Replace with your actual key for city ID
-              name: city.name,
+            states: region?.states?.map(state => ({
+              stateId: state.state_id, // Replace with your actual key for city ID
+              name: state.state,
+              cities: state?.cities?.map(city => ({
+                cityId: city.city_id, // Replace with your actual key for city ID
+                name: city.name,
+              })),
             })),
+           
           }));
   
           setApiData(transformedData);
@@ -168,33 +164,46 @@ export default function CreateJobPage(props) {
   const handleRegionChange = (event) => {
     const regionId = event.target.value;
     setSelectedRegion(regionId)
-   
-    
-
     // Find the selected region from the apiData
     const selectedRegionData = apiData.find((data) => data.regionId === regionId);
 
     // Set the available cities for the selected region
-    setCities(selectedRegionData ? selectedRegionData.cities : []);
-    setSelectedCities([]);
+    setStates(selectedRegionData ? selectedRegionData.states : []);
+    // setCities(selectedRegionData ? selectedRegionData.cities : []);
+    setSelectedStates('');
   };
 
-  const handleCityChange1 = (event) => {
+  const handleStateChange = (event) => {
+    const stateId = event.target.value;
+    setSelectedStates(stateId)
+    // Find the selected region from the apiData
+    const selectedStateData = apiData.map((data) =>data.states.find((state) => state.stateId === stateId));
+  
+    // Set the available cities for the selected region
+    setCities(selectedStateData ? selectedStateData[0].cities : []);
+    // setCities(selectedRegionData ? selectedRegionData.cities : []);
+    setSelectedCities([]);
+   
+  };
+
+
+
+  const handleCityChange = (event) => {
     const selectedNames = event.target.value;
   
     // Create a Set to ensure unique city IDs
     const selectedIdsSet = new Set();
   
     // Loop through the regions and city_info to find IDs based on selected names
-    apiData.forEach((data) => {
-      if (data.regionId === selectedRegion) {
-        data.cities.forEach((city) => {
+    apiData.forEach((data) =>data.states.forEach((item) =>  {
+      if (item.stateId === selectedStates) {
+        item.cities.forEach((city) => {
           if (selectedNames.includes(city.name)) {
             selectedIdsSet.add(city.cityId);
           }
         });
       }
-    });
+    }));
   
     // Convert the Set back to an array
     const selectedIds = Array.from(selectedIdsSet);
@@ -203,8 +212,6 @@ export default function CreateJobPage(props) {
     setSelectedCityId(selectedIds); // Update selectedCityId
    
   };
-  
-  
     
     const[under,setUnder]=useState([])
     
@@ -214,8 +221,8 @@ export default function CreateJobPage(props) {
         api.get(apiUrl)
           .then((response) => {
             // Handle the response data here
-            setUnder(response.data);
-            console.log(response.data)
+            setUnder(response?.data);
+          
           
           })
           .catch((error) => {
@@ -224,8 +231,7 @@ export default function CreateJobPage(props) {
           });
       }, []);
 
-
-      console.log("cityNew",selectedCityId)
+    
 
     const handleSave = async (e) => {
         e.preventDefault();
@@ -238,6 +244,7 @@ export default function CreateJobPage(props) {
         formData.append('working_under', selectedUnderId || null); 
         formData.append('job_type', selectedJobTypes); // Set your default job type as needed
         formData.append('city',  selectedCityId);
+        formData.append('state',selectedStates );
         formData.append('region',selectedRegion );
 
       
@@ -252,18 +259,21 @@ export default function CreateJobPage(props) {
        
       
           // Clear or reset the form fields by updating the state variables
+          setOpenDialog(true);
           setJobTitle('');
           setDescription('');
           setExperience('');
           setSalary(''); 
-          setSelectedCity([]);
+          setSelectedRegion([]);
+          setSelectedStates('');
+          setSelectedCities([]);
           setWorkingUnder([]);
           setSelectedJobTypes([]);
           setSelectedCityId([]);
+          setSelectedStateId([]);
           setSelectedUnder([])
           setSelectedRegionId([])
           
-          setOpenDialog(true);
           
       
         } catch (error) {
@@ -275,7 +285,7 @@ export default function CreateJobPage(props) {
 
     const [selectedSizes, setSelectedSizes] = useState([]);
 
-   
+  
 
     return (
         <Container>
@@ -305,16 +315,35 @@ export default function CreateJobPage(props) {
           </MenuItem>
         ))}
       </Select>
-      
+      <Stack pt={2}>
       {selectedRegion && (
+        
+        <Select
+          label="Select Cities"
+          value={selectedStates}
+          onChange={handleStateChange}
+      
+        >
+          {states?.map(item => (
+            <MenuItem key={item.stateId} value={item.stateId}>
+               {/* Use city.id as the value */}
+            {item.name}
+
+            </MenuItem>
+          ))}
+        </Select>
+      )}</Stack>
+      
+      <Stack pt={2}>
+      {selectedStates && (
         <Select
           multiple
           label="Select Cities"
           value={selectedCities}
-          onChange={handleCityChange1}
+          onChange={handleCityChange}
           renderValue={(selected) => selected.join(', ')}
         >
-          {cities.map(city => (
+          {cities?.map(city => (
             <MenuItem key={city.cityId} value={city.name}> {/* Use city.id as the value */}
               <Checkbox checked={selectedCities.includes(city.name)} />
               <ListItemText primary={city.name} />
@@ -322,6 +351,7 @@ export default function CreateJobPage(props) {
           ))}
         </Select>
       )}
+      </Stack>
                         </FormControl>
                         <TextField
                             label="Role Title"
@@ -367,7 +397,7 @@ export default function CreateJobPage(props) {
         />
       ))}
                     </Stack>
-                    <Stack px={4} direction="row">
+                    <Stack px={4}>
 
                         <TextField
                             label="Experience"
@@ -377,7 +407,10 @@ export default function CreateJobPage(props) {
                             value={experience}
                             onChange={(e) => setExperience(e.target.value)}
                         />
+                    <Typography variant="body1">Don't Use ,.- or Alphabet only use Digit.</Typography>
+
                     </Stack>
+
                     <Stack p={4} >
                         <TextField
                             label="Enter Salary"
@@ -387,7 +420,10 @@ export default function CreateJobPage(props) {
                             fullWidth
                             autoFocus
                         />
+                     <Typography variant="body1">Don't Use ,.- or Alphabet only use Digit.</Typography>
+
                     </Stack>
+
                     <Stack px={4} paddingBottom={4}>
                         <FormControl fullWidth variant="outlined">
                             <InputLabel>Working Under</InputLabel>
@@ -398,7 +434,7 @@ export default function CreateJobPage(props) {
                                 onChange={handleUnderChange}
                                 renderValue={(selected) => selected.join(', ')}
                             >
-                                  {under.map((unders) => (
+                                  {under?.map((unders) => (
      
      selectedCityId === unders.id && (
         <MenuItem key={unders.id} value={unders.name}>
@@ -457,6 +493,15 @@ export default function CreateJobPage(props) {
                     </Stack>
                 </Card>
             </Stack> */}
+             <Dialog open={openDialog} onClose={handleCloseDialog}>
+        <DialogTitle>Success</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">The job has been successfully created.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
         </Container>
     );

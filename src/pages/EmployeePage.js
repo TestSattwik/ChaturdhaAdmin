@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 
 import {
   Card,
+  Box,
   Table,
   Stack,
   Paper,
@@ -100,6 +101,8 @@ export default function TransporterAdminPage() {
 
   const [apiData, setApiData] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [loading, setLoading] = useState(true);
+
 
 
   useEffect(() => {
@@ -122,6 +125,33 @@ export default function TransporterAdminPage() {
   }, []);
 
   // Your API data fetching code here...
+
+  const token = localStorage.getItem('access_token');
+  console.log('token',token)
+  
+  const companyName = "Applied Candidates";
+
+  const [loadingCompany, setLoadingCompany] = useState("");
+  
+  useEffect(() => {
+    if (loading) {
+      animateCompany();
+    }6000
+  }, [loading]);
+
+  const animateCompany = () => {
+    let currentIndex = 0;
+    
+    const interval = setInterval(() => {
+      if (currentIndex <= companyName.length) {
+        setLoadingCompany(companyName.substring(0, currentIndex));
+        currentIndex++;
+      } else {
+        clearInterval(interval);
+        setLoading(false);
+      }
+    }, 100); // Adjust the interval duration as needed
+  };
 
 
   
@@ -225,6 +255,25 @@ export default function TransporterAdminPage() {
  
 
   const isNotFound = !filteredUsers.length && !!filterName;
+
+   
+  if (loading) { 
+    return (
+      <Container maxWidth="xl">
+  <Box
+    sx={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+   
+    }}
+  >
+    <Typography variant="h6">{loadingCompany}</Typography>
+  </Box>
+</Container>
+    );
+  }
+  
 
   return (
     <>

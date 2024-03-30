@@ -1,5 +1,7 @@
 import { Navigate, useRoutes } from 'react-router-dom';
 // layouts
+import React,{useEffect,useState} from 'react'
+import { LinearProgress } from '@mui/material'; 
 import DashboardLayout from './layouts/dashboard';
 import SimpleLayout from './layouts/simple';
 import BlogPage from './pages/BlogPage';
@@ -15,6 +17,7 @@ import TransportCity from './pages/TransportCity';
 import MaterialCity from './pages/MaterialCity';
 import SingleEmployee from './pages/SingleEmployee';
 import SingleSupplier from './pages/SingleSupplier';
+import Loading from './pages/Loading';
 import SingleTransporter from './pages/SingleTransporter';
 import SingleDriver from './pages/SingleDriver';
 import SingleCustomer from './pages/SingleCustomer';
@@ -40,14 +43,50 @@ import Test from './pages/Test';
 // ----------------------------------------------------------------------
 
 export default function Router() {
+  const [access_token, setAccessToken] = useState(null);
+
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        
+        const storedAccessToken = localStorage.getItem('access_token');
+        setAccessToken(storedAccessToken);
+
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchData();
+  }, [access_token]);
+
+
+  const [loading, setLoading] = useState(true); // State to track loading status
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Simulate loading delay for 2 seconds
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        setLoading(false); // After loading, set loading state to false
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+
   const routes = useRoutes([
     {
       path: '/dashboard',
-      element: <DashboardLayout />,
+      element: loading ? <Loading />: access_token ? <DashboardLayout /> : <LoginPage />,
       children: [
         { element: <Navigate to="/dashboard/job" />, index: true },
         // { path: 'app', element: <DashboardAppPage /> },
-        { path: 'app', element: <EmployeePage /> },
+        { path: 'app', element: <EmployeePage /> }, 
         { path: 'user', element: <UserPage /> },
         { path: 'job', element: <JobPage /> },
         { path: 'createjob', element: <CreateJobPage /> },

@@ -23,7 +23,7 @@ import {
   IconButton,
   TableContainer,
   TablePagination,
-  TextField
+  TextField,Box
 } from '@mui/material';
 const YourComponent = () => {
   const [regions, setRegions] = useState([]);
@@ -31,24 +31,62 @@ const YourComponent = () => {
   const [newCityName, setNewCityName] = useState('');
   const [newPincode, setNewPincode] = useState('');
   const [newArea, setNewArea] = useState('');
+  const [newStateNames, setNewStateNames] = useState('');
+
+  const [loading, setLoading] = useState(true);
+  
   const [selectedRegionId, setSelectedRegionId] = useState(null);
+  const [selectedStateId, setSelectedStateId] = useState(null);
+
   const [selectedCityId, setSelectedCityId] = useState(null);
   const [selectedPincodeId, setSelectedPincodeId] = useState(null);
 
   // Create state to manage pincode inputs for each city separately
   const [pincodeInputs, setPincodeInputs] = useState({});
   const [cityNames, setCityNames] = useState({});
+  const [stateNames, setStateNames] = useState({});
+
 
   // Create state to manage area inputs for each pincode separately
   const [areaInputs, setAreaInputs] = useState({});
 
-  useEffect(() => {
-    // Fetch regions when the component mounts
-    api.get(`api/product/nested_areas/`)
+  const fetchData = () => {
+    api.get(`api/marketplace/nested_areas/`)
       .then(response => setRegions(response.data))
       .catch(error => console.error('Error fetching regions:', error));
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
+  
+  
+  const companyName = "Locations";
+
+  const [loadingCompany, setLoadingCompany] = useState("");
+  
+  useEffect(() => {
+    if (loading) {
+      animateCompany();
+    }6000
+  }, [loading]);
+
+  const animateCompany = () => {
+    let currentIndex = 0;
+    
+    const interval = setInterval(() => {
+      if (currentIndex <= companyName.length) {
+        setLoadingCompany(companyName.substring(0, currentIndex));
+        currentIndex++;
+      } else {
+        clearInterval(interval);
+        setLoading(false);
+      }
+    }, 100); // Adjust the interval duration as needed
+  };
+
+  
   const handleRegionSubmit = (e) => {
     e.preventDefault();
 
@@ -56,10 +94,10 @@ const YourComponent = () => {
     // Create a new region with the entered name
     const newRegion = { name: newRegionName };
 
-    api.post(`api/product/regions/`, newRegion)
+    api.post(`api/marketplace/regions/`, newRegion)
       .then(response => {
         // Refetch the regions data after a new region is created
-        api.get(`api/product/nested_areas/`)
+        api.get(`api/marketplace/nested_areas/`)
           .then(response => setRegions(response.data))
           .catch(error => console.error('Error fetching regions:', error));
 
@@ -69,34 +107,41 @@ const YourComponent = () => {
       .catch(error => console.error('Error creating region:', error));
   };
 
-
-  const handleCitySubmit = (regionId) => (e) => {
+  
+  const handleStateSubmit = (regionId) => (e) => {
     e.preventDefault();
 
     // Create a new city with the entered name and the selected region
-    const newCity = { name: cityNames[regionId], region: regionId };
+    const newState = { name: stateNames[regionId], region: regionId };
+
+    // Send a POST request to create the new state
+    api.post(`api/marketplace/states/`, newState)
+      .then(response => {
+       
+        // Clear the input field
+        setStateNames({ ...stateNames, [regionId]: '' });
+       fetchData()
+      
+      })
+      .catch(error => console.error('Error creating state:', error));
+  };
+
+  
+
+  const handleCitySubmit = (stateId) => (e) => {
+    e.preventDefault();
+
+    // Create a new city with the entered name and the selected region
+    const newCity = { name: cityNames[stateId], state: stateId };
 
     // Send a POST request to create the new city
-    api.post(`api/product/cities/`, newCity)
+    api.post(`api/marketplace/cities/`, newCity)
       .then(response => {
         // Update the state with the new city
-        const updatedRegions = regions.map(region => {
-          if (region.id === regionId) {
-            // Add the new city to the selected region
-            return {
-              ...region,
-              cities: [...(region.cities || []), response.data],
-            };
-          }
-          return region;
-        });
+        setCityNames({ ...cityNames, [stateId]: '' });
 
-        setRegions(updatedRegions);
-
+       fetchData()
         // Clear the input field
-        setCityNames({ ...cityNames, [regionId]: '' });
-        setPincodeInputs({ ...pincodeInputs, [response.data.id]: '' });
-        setAreaInputs({ ...areaInputs, [response.data.id]: '' });
       })
       .catch(error => console.error('Error creating city:', error));
   };
@@ -115,34 +160,12 @@ const YourComponent = () => {
 
     // Create a new pincode with the entered value and the selected city
     const newPincodeData = { code: cityPincode, city: cityId };
-
     // Send a POST request to create the new pincode
-    api.post(`api/product/pincodes/createlist/`, newPincodeData)
+    api.post(`api/marketplace/pincodes/`, newPincodeData)
       .then(response => {
         // Update the state with the new pincode
-        const updatedCities = regions.flatMap(region => region.cities || []).map(city => {
-          if (city.city_id === cityId) {
-            // Add the new pincode to the selected city
-            return {
-              ...city,
-              pincodes: [...(city.pincodes || []), response.data],
-            };
-          }
-          return city;
-        });
-
-        const updatedRegions = regions.map(region => {
-          if (region.cities) {
-            return {
-              ...region,
-              cities: updatedCities.filter(city => city.region === region.region_id),
-            };
-          }
-          return region;
-        });
-
-        setRegions(updatedRegions);
-
+        setPincodeInputs({ ...pincodeInputs, [cityId]: '' });
+         fetchData()
 
       })
       .catch(error => console.error('Error creating pincode:', error));
@@ -157,45 +180,14 @@ const YourComponent = () => {
     const newAreaData = { name: area, pincode: pincodeId };
 
     // Send a POST request to create the new area
-    api.post(`api/product/areas/`, newAreaData)
+    api.post(`api/marketplace/areas/`, newAreaData)
       .then(response => {
         // Update the state with the new area
-        const updatedPincodes = regions.flatMap(region => region.cities || []).flatMap(city => city.pincodes || []).map(pincode => {
-          if (pincode.pincode_id === pincodeId) {
-            // Add the new area to the selected pincode
-            return {
-              ...pincode,
-              areas: [...(pincode.areas || []), response.data],
-            };
-          }
-          return pincode;
-        });
-
-        const updatedCities = regions.flatMap(region => region.cities || []).map(city => {
-          if (city.pincodes) {
-            return {
-              ...city,
-              pincodes: updatedPincodes.filter(pincode => pincode.city === city.city_id),
-            };
-          }
-          return city;
-        });
-
-        const updatedRegions = regions.map(region => {
-          if (region.cities) {
-            return {
-              ...region,
-              cities: updatedCities.filter(city => city.region === region.region_id),
-            };
-          }
-          return region;
-        });
-
-        setRegions(updatedRegions);
-
         // Clear the input field for the specific pincode
         setAreaInputs({ ...areaInputs, [pincodeId]: '' });
         setNewArea('');
+        fetchData()
+
       })
       .catch(error => console.error('Error creating area:', error));
   };
@@ -205,8 +197,14 @@ const YourComponent = () => {
   // ...
 
   // Update the state for city name when typing in the input field
-  const handleCityNameChange = (cityId, value) => {
-    setCityNames({ ...cityNames, [cityId]: value });
+
+  const handleStateNameChange = (regionId, value) => {
+    setStateNames({ ...stateNames, [regionId]: value });
+  };
+
+
+  const handleCityNameChange = (stateId, value) => {
+    setCityNames({ ...cityNames, [stateId]: value });
   };
 
 
@@ -219,6 +217,25 @@ const YourComponent = () => {
   const handleAreaInputChange = (pincodeId, value) => {
     setAreaInputs({ ...areaInputs, [pincodeId]: value });
   };
+
+  
+   
+  if (loading) { 
+    return (
+      <Container maxWidth="xl">
+  <Box
+    sx={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+   
+    }}
+  >
+    <Typography variant="h6">{loadingCompany}</Typography>
+  </Box>
+</Container>
+    );
+  }
 
   return (
     <>
@@ -255,16 +272,17 @@ const YourComponent = () => {
           </form>
           <Card sx={{ width: '100%', padding: 1 }}>
           
-          {regions.map(region => (
+          {regions?.map(region => (
             <div key={region.region_id}>
               <Stack
                           direction={"row"}
                           alignItems={"center"}
                           spacing={1}
                         >
-              <Typography variant="h2" component="div">Region : {region.region}</Typography>
+                          <Typography variant="h2" component="div" pl={1} >Region : </Typography>
+              <Typography variant="h2" component="div" color="orange">{region.region}</Typography>
                {/* Form for creating a new city within the region */}
-               <form onSubmit={handleCitySubmit(region.region_id)}>
+               <form onSubmit={handleStateSubmit(region.region_id)}>
                <Stack
                           direction={"row"}
                           alignItems={"center"}
@@ -274,20 +292,53 @@ const YourComponent = () => {
                     <TextField
                           type="text"
                           margin="dense"
-                          label="Add New City"
+                          label="Add New State"
                           color='warning'
-                          value={cityNames[region.region_id] || ''}
-                    onChange={(e) => handleCityNameChange(region.region_id, e.target.value)}
+                          value={stateNames[region.region_id] || ''}
+                    onChange={(e) => handleStateNameChange(region.region_id, e.target.value)}
                    ></TextField>
                        <Button type="submit" color='warning'>
-                            Create City
+                            Create state
                           </Button>
                    </Stack>
                 
               </form>
               </Stack>
+              {region?.states?.map(state => (
+            <div key={state.state_id}>
+              <Stack
+                          direction={"row"}
+                          alignItems={"center"}
+                          spacing={1}
+                          paddingLeft={2}
+                        >
+                          <Typography variant="h3" component="div" pl={1} >State : </Typography>
 
-              {region.cities && region.cities.map(city => (
+              <Typography variant="h3" component="div" color="orange">{state.state}</Typography>
+               {/* Form for creating a new city within the region */}
+               <form onSubmit={handleCitySubmit(state.state_id)}>
+               <Stack
+                          direction={"row"}
+                          alignItems={"center"}
+                          spacing={1}
+                          p={1}
+                        >
+                    <TextField
+                          type="text"
+                          margin="dense"
+                          label="Add New city"
+                          color='warning'
+                          value={cityNames[state.state_id] || ''}
+                    onChange={(e) => handleCityNameChange(state.state_id, e.target.value)}
+                   ></TextField>
+                       <Button type="submit" color='warning'>
+                            Create city
+                          </Button>
+                   </Stack>
+                
+              </form>
+              </Stack>
+              {state?.cities && state?.cities?.map(city => (
                 <div key={city.city_id}>
                    <Stack
                           direction={"row"}
@@ -295,7 +346,8 @@ const YourComponent = () => {
                           spacing={1}
                           pl={3}
                         >
-                  <Typography variant="h3" component="div" pl={1}>City : {city.name}</Typography>
+                          <Typography variant="h4" component="div" pl={1} >City : </Typography>
+                  <Typography variant="h4" component="div" color="orange">{city.name}</Typography>
                     {/* Form for creating a new pincode within the city */}
                     <form onSubmit={handlePincodeSubmit(city.city_id)}>
                     <Stack
@@ -318,57 +370,60 @@ const YourComponent = () => {
                    </Stack>
                   </form>
                   </Stack>
-          <Card sx={{ width: '100%', margin: 3, padding: 1 }}>
+                  <Card sx={{ width: '100%', margin: 3, padding: 1 }}>
 
-                  {city.pincodes && city.pincodes.map(pincode => (
-                    <div key={pincode.pincode_id}>
-                      <Stack
-                          direction={"row"}
-                          alignItems={"center"}
-                          spacing={1}
-                          pl={2}
-                        >
-                      <Typography variant="h4" component="div" >Pincode : {pincode.code}</Typography>
-                        {/* Form for creating a new area within the pincode */}
-                        <form onSubmit={handleAreaSubmit(pincode.pincode_id)} style={{ justifyContent: "center", alignItems: "center" }}>
-                        <Stack
-                          direction={"row"}
-                          alignItems={"center"}
-                          spacing={1}
-                        >
-                        <TextField
-                          type="text"
-                          margin="dense"
-                          label="Add New Area Name"
-                          color='warning'
-                          value={areaInputs[pincode.pincode_id] || ''}
-                          onChange={(e) => handleAreaInputChange(pincode.pincode_id, e.target.value)}
-                        ></TextField>
-                          <Button type="submit" color='warning'>
-                            Create Area
-                          </Button>
-                     </Stack>
+{city?.pincodes && city?.pincodes?.map(pincode => (
+  <div key={pincode.pincode_id}>
+    <Stack
+        direction={"row"}
+        alignItems={"center"}
+        spacing={1}
+        pl={2}
+      >
+    <Typography variant="h4" component="div" >Pincode : {pincode.code}</Typography>
+      {/* Form for creating a new area within the pincode */}
+      <form onSubmit={handleAreaSubmit(pincode.pincode_id)} style={{ justifyContent: "center", alignItems: "center" }}>
+      <Stack
+        direction={"row"}
+        alignItems={"center"}
+        spacing={1}
+      >
+      <TextField
+        type="text"
+        margin="dense"
+        label="Add New Area Name"
+        color='warning'
+        value={areaInputs[pincode.pincode_id] || ''}
+        onChange={(e) => handleAreaInputChange(pincode.pincode_id, e.target.value)}
+      ></TextField>
+        <Button type="submit" color='warning'>
+          Create Area
+        </Button>
+   </Stack>
 
-                      </form>
-                      </Stack>
-                      <Stack
-                          // direction={"row"}
-                          // alignItems={"center"}
-                          spacing={1}
-                          pl={8}
-                        >
-          <Typography variant="h6" component="div" pl={2}>Area :</Typography>
+    </form>
+    </Stack>
+    <Stack
+        // direction={"row"}
+        // alignItems={"center"}
+        spacing={1}
+        pl={8}
+      >
+<Typography variant="h6" component="div" pl={2}>Area :</Typography>
 
-                      {pincode.areas && pincode.areas.map(area => (
-                        <li key={area.area_id} style={{ paddingLeft: 20, marginLeft: 20 }}>{area}</li>
-                      ))}
-                      </Stack>
+    {pincode?.areas && pincode?.areas?.map(area => (
+      <li key={area.area_id} style={{ paddingLeft: 20, marginLeft: 20 }}>{area}</li>
+    ))}
+    </Stack>
 
-                    
-                    </div>
-                  ))}
+  
+  </div>
+))}
 </Card>
-                
+                  </div>
+              ))}
+
+              
                 </div>
               ))}
 

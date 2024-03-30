@@ -37,12 +37,35 @@ Nav.propTypes = {
 export default function Nav({ openNav, onCloseNav }) {
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    // Add any logout logic here
-    // For now, let's just navigate to the LoginPage
-    navigate('/login');
+  const removeTokens = async () => {
+    try {
+      await localStorage.removeItem('access_token');
+      await localStorage.removeItem('refresh_token');
+      await localStorage.removeItem('employee_role_name');
+      await localStorage.removeItem('employee_role_id');
+      await localStorage.removeItem('employee_role_city');
+      await localStorage.removeItem('employee_role_cityid');
+      await localStorage.removeItem('employee_role_region');
+      await localStorage.removeItem('employee_role_regionid');
+   
+  
+    } catch (error) {
+      console.error('Failed to remove tokens:', error);
+    }
   };
-
+  
+  const handleLogout = async () => {
+    try {
+ 
+      await removeTokens(); // Wait for tokens to be removed
+      await navigate('/login'); // Wait for navigation to the login screen
+  
+      // Perform any additional logout actions, if needed
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+  
   const { pathname } = useLocation();
 
   const isDesktop = useResponsive('up', 'lg');

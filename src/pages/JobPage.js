@@ -12,7 +12,7 @@ import MenuItem from '@mui/material/MenuItem';
 import { Helmet } from 'react-helmet-async';
 import Card from '@mui/material/Card';
 import {api} from "../Api/Api"
-
+import { LinearProgress } from '@mui/material'; 
 import CardContent from '@mui/material/CardContent';
 import CardMedia from '@mui/material/CardMedia';
 import { Button, CardActionArea, CardActions, Grid, Container, Typography, Stack } from '@mui/material';
@@ -50,6 +50,36 @@ export default function JobPage() {
     const [inputValue, setInputValue] = useState('');
     const [successMessage, setSuccessMessage] = useState(null);
     const [tasks, setTasks] = useState([]);
+    const [loading, setLoading] = useState(true); // State to track loading status
+
+
+    const retrieveFromLocalStorage = async () => {
+      try {
+        // Retrieve items from local storage
+        const token = await localStorage.getItem('access_token');
+        const role = await localStorage.getItem('employee_role_name');
+        const id = await localStorage.getItem('employee_role_id');
+        const city = await localStorage.getItem('employee_role_city');
+        const cityId = await localStorage.getItem('employee_role_cityid');
+        const region = await localStorage.getItem('employee_role_region');
+        const regionId = await localStorage.getItem('employee_role_regionid');
+        
+        console.log('token:', token);
+    
+        console.log('Role:', role);
+        console.log('ID:', id);
+        console.log('City:', city);
+        console.log('City ID:', cityId);
+        console.log('Region:', region);
+        console.log('Region ID:', regionId);
+      } catch (error) {
+        console.error('Error retrieving items from local storage:', error);
+      }
+    };
+    
+    useEffect(() => {
+      retrieveFromLocalStorage();
+    },[])
     
     const handleClickOpen = () => {
         setOpen(true);
@@ -96,8 +126,9 @@ export default function JobPage() {
       api.get(apiUrl)
         .then((response) => {
           // Handle the response data here
-          setApiData(response.data); // Use setApiData to update the state
-          console.log(response.data);
+          setApiData(response?.data); // Use setApiData to update the state
+      
+        
         })
         .catch((error) => {
           // Handle any errors that occurred during the request
@@ -105,6 +136,21 @@ export default function JobPage() {
         });
     }, []);
     
+
+
+  // useEffect(() => {
+  //   const fetchData = async () => {
+  //     try {
+  //       // Simulate loading delay for 2 seconds
+  //       await new Promise(resolve => setTimeout(resolve, 2000));
+  //       setLoading(false); // After loading, set loading state to false
+  //     } catch (error) {
+  //       console.error(error);
+  //     }
+  //   };
+
+  //   fetchData();
+  // }, []);
 
 
 
@@ -124,79 +170,119 @@ export default function JobPage() {
 
     const groupDataByRegionCityName = () => {
       const groupedData = {};
-  
-      apiData.forEach((item) => {
-        const region = item.region;
-        const regionName = item.region_name; // Region name
-        item.city_info.forEach((cityInfo) => {
-          const cityId = cityInfo.id;
-          const cityName = cityInfo.name; // City name
-          const id = item.id;
-          const name = item.name; // Assuming this is the user's name
-  
-          if (!groupedData[region]) {
-            groupedData[region] = { regionName, cities: {} };
+    
+      apiData?.forEach((item) => {
+        const region = item?.region;
+        const regionName = item?.region_name; // Region name
+        const stateId = item?.state_info?.id;
+        const stateName = item?.state_info?.name; // State name
+    
+        item.city_info?.forEach((cityInfo) => {
+          const cityId = cityInfo?.id;
+          const cityName = cityInfo?.name; // City name
+          const id = item?.id;
+          const name = item?.name; // Assuming this is the user's name
+    
+          const regionKey = `${region}`; // Unique key for region and state combination
+    
+          if (!groupedData[regionKey]) {
+            groupedData[regionKey] = { regionName, stateName, cities: {} };
           }
-  
-          if (!groupedData[region].cities[cityId]) {
-            groupedData[region].cities[cityId] = { cityName, jobs: [] };
+    
+          if (!groupedData[regionKey].cities[cityId]) {
+            groupedData[regionKey].cities[cityId] = { cityName, jobs: [] };
           }
-  
-          groupedData[region].cities[cityId].jobs.push({ id, name });
+    
+          groupedData[regionKey].cities[cityId].jobs.push({ id, name });
         });
       });
-  
+    
       return groupedData;
     };
-  
-    const groupedData = groupDataByRegionCityName();
-      
-      
-    return (
+    
+      const groupedData = groupDataByRegionCityName();
 
+ 
+      const companyName = "Organisation";
+
+      const [loadingCompany, setLoadingCompany] = useState("");
+      
+      useEffect(() => {
+        if (loading) {
+          animateCompany();
+        }6000
+      }, [loading]);
+    
+      const animateCompany = () => {
+        let currentIndex = 0;
+        
+        const interval = setInterval(() => {
+          if (currentIndex <= companyName.length) {
+            setLoadingCompany(companyName.substring(0, currentIndex));
+            currentIndex++;
+          } else {
+            clearInterval(interval);
+            setLoading(false);
+          }
+        }, 100); // Adjust the interval duration as needed
+      };
+    
+      if (loading) { 
+        return (
+          <Container maxWidth="xl">
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+       
+        }}
+      >
+        <Typography variant="h6">{loadingCompany}</Typography>
+      </Box>
+    </Container>
+        );
+      }
+
+     
+      return (
         <Container maxWidth="xl">
-            {/* <Stack direction="row" alignItems="center" justifyContent="space-between" mb={5}>
-          <Typography variant="h4" gutterBottom>
-          Total Arl-Tech Employees - 32
-          </Typography>
-          <Button variant="contained" startIcon={<Iconify icon="eva:plus-fill" />} color='warning' component={Link} to="/dashboard/createjob">
-            Edit Job Profile
-          </Button>
-        </Stack> */}
-            <div>
-      {Object.keys(groupedData).map((region) => (
-        <div key={region}>
-          <Typography variant="h4" sx={{ mb: 5 }}>
-            Region: {groupedData[region].regionName}
-          </Typography>
-          {Object.keys(groupedData[region].cities).map((cityId) => (
-            <div key={cityId}>
-              <Typography variant="h4" sx={{ mb: 5 }}>
-                City: {groupedData[region].cities[cityId].cityName}
-              </Typography>
-              <Card xs={12}>
+       
+          <div>
+            {Object.keys(groupedData)?.map((regionStateKey) => (
+              <div key={regionStateKey}>
+                <Typography variant="h4" sx={{ mb: 5 }}>
+                  Region: {groupedData[regionStateKey].regionName}, State: {groupedData[regionStateKey].stateName}
+                </Typography>
+                {Object.keys(groupedData[regionStateKey].cities)?.map((cityId) => (
+                  <div key={cityId}>
+                    <Typography variant="h4" sx={{ mb: 5 }}>
+                      City: {groupedData[regionStateKey].cities[cityId].cityName}
+                    </Typography>
+                    <Card xs={12}>
                 <Grid container spacing={3} p={2}>
-                  {groupedData[region].cities[cityId].jobs.map(({ id, name }, index) => (
-                    <Grid item xs={12} sm={6} md={3} key={index}>
-                      <AppWidgetSummary
+                        {groupedData[regionStateKey].cities[cityId]?.jobs?.map(({ id, name }, index) => (
+                          <Grid item xs={12} sm={6} md={3} key={index}>
+                              <AppWidgetSummary
                         title={name}
                         color="warning"
                         total={1}
                         icon="ant-design:team-outlined"
                       />
-                      <Link to={`/dashboard/SingleJob/${region}/${cityId}/${id}`}>
-                        <Button color="warning">Open</Button>
-                      </Link>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Card>
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-        </Container>
+                           
+                            <Link to={`/dashboard/SingleJob/${regionStateKey}/${cityId}/${id}`}>
+                              <Button color="warning">Open</Button>
+                            </Link>
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Card>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
 
-    )
+        </Container>
+      );
 }
