@@ -68,6 +68,7 @@
   "devDependencies": {
     "@babel/core": "^7.21.0",
     "@babel/eslint-parser": "^7.19.1",
+    "cross-env": "^7.0.3",
     "eslint-plugin-react-hooks": "^4.6.0"
   },
   "overrides": {
